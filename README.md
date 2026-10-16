@@ -14,11 +14,27 @@ Run the SQL in `supabase/migrations/001_initial_schema.sql` in your Supabase SQL
 
 ## Endpoints
 
+Auth: `Authorization: Bearer <token>` on all `/v1` routes except webhooks.
+Use a Supabase JWT (dashboard) or an API key (`vouch_...`, server-to-server).
+
 | Method | Path | Description |
 |---|---|---|
+| GET | /v1/workspaces/me | Get (or auto-create) your workspace |
+| PATCH | /v1/workspaces/me | Update name / notification prefs |
+| GET/POST | /v1/workspaces/me/members | List / invite teammates |
+| DELETE | /v1/workspaces/me/members/:id | Remove a teammate |
+| GET/POST | /v1/api-keys | List / generate API keys (secret shown once) |
+| DELETE | /v1/api-keys/:id | Revoke a key |
+| GET | /v1/programs | List programs with counts |
 | POST | /v1/programs | Create a referral program |
-| POST | /v1/programs/:id/rules | Add a reward rule |
+| GET/PATCH | /v1/programs/:id | Program detail / update (pause, rename…) |
 | GET | /v1/programs/:id/stats | Dashboard stats |
+| GET/POST | /v1/programs/:id/rules | List / add reward rules |
+| PATCH/DELETE | /v1/programs/:id/rules/:ruleId | Update / delete a rule |
+| GET | /v1/programs/:id/links | Referral links with per-link counts |
+| GET | /v1/programs/:id/rewards | Rewards queue (`?status=`) |
+| POST | /v1/programs/:id/rewards/:rewardId/issue | Issue a pending reward now |
+| GET | /v1/programs/:id/activity | Merged recent-activity feed |
 | POST | /v1/referral-links | Generate (or fetch) a referrer's link |
 | GET | /r/:code?to=https://... | Track click, 302 redirect |
 | POST | /v1/attributions | Attribute a signup to a referrer |

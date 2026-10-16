@@ -1,5 +1,6 @@
 const express = require('express');
 const supabase = require('../db');
+const { scopedProgram } = require('../middleware/auth');
 
 const router = express.Router();
 
@@ -11,11 +12,7 @@ router.post('/', async (req, res) => {
     return res.status(400).json({ error: 'program_id, referral_code and referred_customer_id are required' });
   }
 
-  const { data: program } = await supabase
-    .from('programs')
-    .select('id, attribution_window_days, attribution_model')
-    .eq('id', program_id)
-    .single();
+  const program = await scopedProgram(program_id, req.workspace.id);
   if (!program) return res.status(404).json({ error: 'program not found' });
 
   const { data: link } = await supabase

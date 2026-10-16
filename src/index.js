@@ -1,21 +1,27 @@
 const express = require('express');
 const cors = require('cors');
 const config = require('./config');
+const { auth } = require('./middleware/auth');
 const { processDueRewards } = require('./services/rewards');
 
 const app = express();
 app.use(cors());
 
-// Stripe webhooks need the raw body: mount before express.json()
+// Stripe webhooks need the raw body: mount before express.json(), no auth (signature-verified)
 app.use('/v1/webhooks/stripe', require('./routes/webhooks'));
 
 app.use(express.json());
 
 app.get('/health', (req, res) => res.json({ ok: true, service: 'referral-engine-api' }));
 
-app.use('/v1/programs', require('./routes/programs'));
-app.use('/v1/referral-links', require('./routes/links'));
-app.use('/v1/attributions', require('./routes/attributions'));
+// Everything under /v1 (except webhooks above) requires auth:
+// Bearer <Supabase JWT> from the dashboard, or Bearer vouch_<key> for server-to-server.
+app.use('/v1/workspaces', auth, require('./routes/workspaces'));
+app.use('/v1/api-keys', auth, require('./routes/apiKeys'));
+app.use('/v1/meta', auth, require('./routes/meta'));
+app.use('/v1/programs', auth, require('./routes/programs'));
+app.use('/v1/referral-links', auth, require('./routes/links'));
+app.use('/v1/attributions', auth, require('./routes/attributions'));
 app.use('/r', require('./routes/track'));
 
 app.use((req, res) => res.status(404).json({ error: 'not found' }));
