@@ -6,22 +6,50 @@ const router = express.Router();
 // GET /v1/programs/:id/stats -> dashboard numbers
 router.get('/:id/stats', async (req, res) => {
   const { id } = req.params;
-  const [[, links], [, clicks], [, attributions], [, conversions], [, rewards]] = await Promise.all([
-    supabase.from('referral_links').select('id', { count: 'exact', head: true }).eq('program_id', id),
-    supabase.from('clicks').select('id, referral_links!inner(program_id)', { count: 'exact', head: true }).eq('referral_links.program_id', id),
-    supabase.from('attributions').select('id', { count: 'exact', head: true }).eq('program_id', id),
-    supabase.from('conversions').select('id,mrr_cents', { count: 'exact' }).eq('attributions.program_id', id),
-    supabase.from('rewards').select('id,status,amount_cents', { count: 'exact' }).eq('program_id', id),
-  ]);
+
+  const { count: linkCount } = await supabase
+    .from('referral_links')
+    .select('id', { count: 'exact', head: true })
+    .eq('program_id', id);
+
+  const { count: signupCount } = await supabase
+    .from('attributions')
+    .select('id', { count: 'exact', head: true })
+    .eq('program_id', id);
+
+  const { data: linkRows } = await supabase
+    .from('referral_links')
+    .select('id')
+    .eq('program_id', id);
+  const linkIds = (linkRows || []).map((r) => r.id);
+
+  let clickCount = 0;
+  if (linkIds.length) {
+    const { count } = await supabase
+      .from('clicks')
+      .select('id', { count: 'exact', head: true })
+      .in('link_id', linkIds);
+    clickCount = count || 0;
+  }
+
+  const { data: conversions } = await supabase
+    .from('conversions')
+    .select('id,mrr_cents,attributions!inner(program_id)')
+    .eq('attributions.program_id', id);
+
+  const { data: rewards } = await supabase
+    .from('rewards')
+    .select('id,status,amount_cents')
+    .eq('program_id', id);
 
   const attributedMrr = (conversions || []).reduce((s, c) => s + (c.mrr_cents || 0), 0);
   const byStatus = {};
   for (const r of rewards || []) byStatus[r.status] = (byStatus[r.status] || 0) + 1;
 
   res.json({
-    links: links ?? 0,
-    clicks: clicks ?? 0,
-    signups: attributions ?? 0,
+    links: linkCount || 0,
+    clicks: clickCount,
+    signups: signupCount || 0,
     conversions: conversions ? conversions.length : 0,
     attributed_mrr_cents: attributedMrr,
     rewards_by_status: byStatus,
